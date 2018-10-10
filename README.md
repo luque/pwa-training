@@ -160,8 +160,97 @@ function(event) {
 
 See: ./lab/service-worker-lab/app
 
+
 ## Working with the Fetch API
 
+Fetch is a modern replacement for XMLHttpRequest that lays the foundation for Progressive Web Apps.
+
+It's based on promises (cleaner code).
+
+Implements CORS (Cross-Origin Resource Sharing):
+   
+  - Browsers enforce the *Same-Origin Policy*:
+    - Requests must match the page's scheme, hostname and port.
+    - Exception: images, scripts, video/audio, embeds.
+    - www.example.com requests JSON from www.json.com, fails unless the other origin gives permission.
+  - Browser can request cross-origin access via CORS:
+    - Adds origin header on request.
+    - Server sends access-control-allow-origin if allowed.
+
+Evaluating the success of responses is particularly important when using fetch because bad responses (like 404s) still resolve. The only time a fetch promise will reject is if the request was unable to complete. The previous code segment would only fall back to .catch if there was no network connection, but not if the response was bad (like a 404):
+
+```
+fetch('examples/example.json')
+.then(function(response) {
+  if (!response.ok) {
+    throw Error(response.statusText);
+  }
+  // Do stuff with the response
+})
+.catch(function(error) {
+  console.log('Looks like there was a problem: \n', error);
+});
+```
+
+Now if the response object's ok property is false (indicating a non 200-299 response), the function throws an error containing response.statusText that triggers the .catch block. This prevents bad responses from propagating down the fetch chain.
+
+
+Promise Chaining:
+
+```
+fetch('examples/example.json')
+.then(function(response) {
+  if (!response.ok) {
+    throw Error(response.statusText);
+  }
+  // Read the response as json.
+  return response.json();
+})
+.then(function(responseAsJson) {
+  // Do stuff with the JSON
+  console.log(responseAsJson);
+})
+.catch(function(error) {
+  console.log('Looks like there was a problem: \n', error);
+});
+```
+
+This code will be cleaner and easier to understand if it's abstracted into functions:
+
+```
+function logResult(result) {
+  console.log(result);
+}
+
+function logError(error) {
+  console.log('Looks like there was a problem: \n', error);
+}
+
+function validateResponse(response) {
+  if (!response.ok) {
+    throw Error(response.statusText);
+  }
+  return response;
+}
+
+function readResponseAsJSON(response) {
+  return response.json();
+}
+
+function fetchJSON(pathToResource) {
+  fetch(pathToResource) // 1
+  .then(validateResponse) // 2
+  .then(readResponseAsJSON) // 3
+  .then(logResult) // 4
+  .catch(logError);
+}
+
+fetchJSON('examples/example.json');
+```
+
+### Lab of Fetch API
+
+See code at: labs/fetch-api-lab/app
 
 
 ## References
