@@ -22,7 +22,38 @@ You should understand your target and audience:
 
 See slides at: https://docs.google.com/presentation/d/154nnHaw5kgj9fwMu8PQA6nr0f6nZmzwwr0Oq-0j6GfY
 
+## Design for All Your Users
 
+Design means something more than just graphic or visual design. “Design” in the context of PWAs means taking a mobile-first approach when building your app, with an emphasis on accessibility.
+
+## Core Technologies
+
+Most API’s in the PWA space are built on JavaScript Promises and the Fetch API.
+
+ES2015:
+
+```
+// ES5
+var func = function(x,y) {
+  return x + y;
+}
+// ES2015
+var func = (x, y) => {
+  return x + y;
+};
+```
+
+Fetch API:
+
+```
+fetch('/examples/example.json')
+.then(response => {
+  return response.json();
+}) // .then do something with the data
+.catch(error => {
+  console.log('Fetch failed', error);
+});
+```
 
 
 
