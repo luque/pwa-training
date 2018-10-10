@@ -253,6 +253,251 @@ fetchJSON('examples/example.json');
 See code at: labs/fetch-api-lab/app
 
 
+## Caching Files with Service Worker
+
+Caching provides a mechanism for storing request/response object pairs in the browser.
+
+The Service Worker API comes with a Cache interface, that lets you create stores of responses keyed by request. While this interface was intended for service workers it is actually exposed on the window, and can be accessed from anywhere in your scripts. The entry point is caches.
+
+All updates to items in the cache must be explicitly requested; items will not expire and must be deleted.
+
+If the amount of cached data exceeds the browser's storage limit, the browser will begin evicting all data associated with an origin, one origin at a time, until the storage amount goes under the limit again.
+
+### Common patterns of caching resources
+
+#### On install (caching the application shell)
+
+```
+self.addEventListener('install', function(event) {
+  event.waitUntil(
+    caches.open(cacheName).then(function(cache) {
+      return cache.addAll(
+        [
+          '/css/bootstrap.css',
+          '/css/main.css',
+          '/js/bootstrap.min.js',
+          '/js/jquery.min.js',
+          '/offline.html'
+        ]
+      );
+    })
+  );
+});
+```
+
+Note: It is important to note that while this event is happening, any previous version of your service worker is still running and serving pages, so the things you do here must not disrupt that. For instance, this is not a good place to delete old caches, because the previous service worker may still be using them at this point.
+
+event.waitUntil extends the lifetime of the install event until the passed promise resolves successfully. If the promise rejects, the installation is considered a failure and this service worker is abandoned (if an older version is running, it stays active).
+
+#### On user interaction
+
+If the whole site can't be taken offline, you can let the user select the content they want available offline (for example, a video, article, or photo gallery). One method is to give the user a "Read later" or "Save for offline" button.
+
+```
+document.querySelector('.cache-article').addEventListener('click', function(event) {
+  event.preventDefault();
+  var id = this.dataset.articleId;
+  caches.open('mysite-article-' + id).then(function(cache) {
+    fetch('/get-article-urls?id=' + id).then(function(response) {
+      // /get-article-urls returns a JSON-encoded array of
+      // resource URLs that a given article depends on
+      return response.json();
+    }).then(function(urls) {
+      cache.addAll(urls);
+    });
+  });
+});
+```
+
+The Cache API is available on the window object, meaning you don't need to involve the service worker to add things to the cache.
+
+#### On network response
+
+If a request doesn't match anything in the cache, get it from the network, send it to the page and add it to the cache at the same time.
+
+```
+self.addEventListener('fetch', function(event) {
+  event.respondWith(
+    caches.open('mysite-dynamic').then(function(cache) {
+      return cache.match(event.request).then(function (response) {
+        return response || fetch(event.request).then(function(response) {
+          cache.put(event.request, response.clone());
+          return response;
+        });
+      });
+    })
+  );
+});
+```
+
+Note: To allow for efficient memory usage, you can only read a response/request's body once. In the code above, .clone() is used to create a copy of the response that can be read separately. See What happens when you read a response? for more information.
+
+### Serving files from the cache
+
+#### Cache only
+
+This approach is good for any static assets that are part of your app's main code (part of that "version" of your app). You should have cached these in the install event, so you can depend on them being there.
+
+You should have cached these in the install event, so you can depend on them being there.
+
+You don't often need to handle this case specifically. Cache falling back to network is more often the appropriate approach.
+
+```
+self.addEventListener('fetch', function(event) {
+  event.respondWith(caches.match(event.request));
+});
+```
+
+If a match isn't found in the cache, the response will look like a connection error.
+
+#### Network only
+
+This is the correct approach for things that can't be performed offline, such as analytics pings and non-GET requests. 
+
+You don't often need to handle this case specifically. Cache falling back to network is more often the appropriate approach.
+
+```
+self.addEventListener('fetch', function(event) {
+  event.respondWith(fetch(event.request));
+});
+```
+
+#### Cache falling back to the network
+
+If you're making your app offline-first, this is how you'll handle the majority of requests. Other patterns will be exceptions based on the incoming request.
+
+```
+self.addEventListener('fetch', function(event) {
+  event.respondWith(
+    caches.match(event.request).then(function(response) {
+      return response || fetch(event.request);
+    })
+  );
+});
+```
+
+This gives you the "Cache only" behavior for things in the cache and the "Network only" behaviour for anything not cached (which includes all non-GET requests, as they cannot be cached).
+
+#### Network falling back to the cache
+
+This is a good approach for resources that update frequently, and are not part of the "version" of the site (for example, articles, avatars, social media timelines, game leader boards). Handling network requests this way means the online users get the most up-to-date content, and offline users get an older cached version.
+
+However, this method has flaws. If the user has an intermittent or slow connection they'll have to wait for the network to fail before they get content from the cache. This can take an extremely long time and is a frustrating user experience. See the next approach, Cache then network, for a better solution.
+
+```
+self.addEventListener('fetch', function(event) {
+  event.respondWith(
+    fetch(event.request).catch(function() {
+      return caches.match(event.request);
+    })
+  );
+});
+```
+
+#### Cache then network
+
+This is also a good approach for resources that update frequently. This approach will get content on screen as fast as possible, but still display up-to-date content once it arrives.
+
+This requires the page to make two requests: one to the cache, and one to the network. The idea is to show the cached data first, then update the page when/if the network data arrives.
+
+```
+var networkDataReceived = false;
+
+startSpinner();
+
+// fetch fresh data
+var networkUpdate = fetch('/data.json').then(function(response) {
+  return response.json();
+}).then(function(data) {
+  networkDataReceived = true;
+  updatePage(data);
+});
+
+// fetch cached data
+caches.match('/data.json').then(function(response) {
+  if (!response) throw Error("No data");
+  return response.json();
+}).then(function(data) {
+  // don't overwrite newer network data
+  if (!networkDataReceived) {
+    updatePage(data);
+  }
+}).catch(function() {
+  // we didn't get cached data, the network is our last hope:
+  return networkUpdate;
+}).catch(showErrorMessage).then(stopSpinner());
+```
+
+Here is the code in the service worker:
+
+```
+self.addEventListener('fetch', function(event) {
+  event.respondWith(
+    caches.open('mysite-dynamic').then(function(cache) {
+      return fetch(event.request).then(function(response) {
+        cache.put(event.request, response.clone());
+        return response;
+      });
+    })
+  );
+});
+```
+
+#### Generic fallback
+
+If you fail to serve something from the cache and/or network you may want to provide a generic fallback. This technique is ideal for secondary imagery such as avatars, failed POST requests, "Unavailable while offline" page.
+
+```
+self.addEventListener('fetch', function(event) {
+  event.respondWith(
+    // Try the cache
+    caches.match(event.request).then(function(response) {
+      // Fall back to network
+      return response || fetch(event.request);
+    }).catch(function() {
+      // If both fail, show a generic fallback:
+      return caches.match('/offline.html');
+      // However, in reality you'd have many different
+      // fallbacks, depending on URL & headers.
+      // Eg, a fallback silhouette image for avatars.
+    })
+  );
+});
+```
+
+### Removing outdated caches
+
+Once a new service worker has installed and a previous version isn't being used, the new one activates, and you get an activate event. Because the old version is out of the way, it's a good time to delete unused caches.
+
+```
+self.addEventListener('activate', function(event) {
+  event.waitUntil(
+    caches.keys().then(function(cacheNames) {
+      return Promise.all(
+        cacheNames.filter(function(cacheName) {
+          // Return true if you want to remove this cache,
+          // but remember that caches are shared across
+          // the whole origin
+        }).map(function(cacheName) {
+          return caches.delete(cacheName);
+        })
+      );
+    })
+  );
+});
+
+```
+
+During activation, other events such as fetch are put into a queue, so a long activation could potentially block page loads. Keep your activation as lean as possible, only using it for things you couldn't do while the old version was active.
+
+### Lab for Caching files
+
+See labs/cache-api-lab/app
+
+
+
+
+
 ## References
 
 - Progressive Web Apps Training by Google: https://developers.google.com/web/ilt/pwa/
