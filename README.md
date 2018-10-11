@@ -495,6 +495,22 @@ During activation, other events such as fetch are put into a queue, so a long ac
 See labs/cache-api-lab/app
 
 
+## Lighthouse PWA Analysis Tool
+
+Lighthouse is an open-source analysis tool that provides insights and feedback for Progressive Web Apps.
+
+As a Chrome extension or in the CLI:
+
+```
+npm install -g lighthouse
+lighthouse https://pwa.rocks
+```
+
+### Lab Lighthouse
+
+See labs/lighthouse-lab/app
+
+
 
 
 
@@ -503,3 +519,4 @@ See labs/cache-api-lab/app
 - Progressive Web Apps Training by Google: https://developers.google.com/web/ilt/pwa/
 - The Offline Cookbook: https://developers.google.com/web/fundamentals/instant-and-offline/offline-cookbook/
 - Promises, an Introduction: https://developers.google.com/web/fundamentals/primers/promises
+- PWA rocks: http://pwa.rocks
