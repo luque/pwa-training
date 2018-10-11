@@ -511,6 +511,151 @@ lighthouse https://pwa.rocks
 See labs/lighthouse-lab/app
 
 
+## Working with Promises
+
+Promises offer a better way to handle asynchronous code in JavaScript.
+
+The promise libraries listed above and promises that are part of the ES2015 JavaScript specification (also referred to as ES6) are all Promises/A+ compatible (See https://github.com/promises-aplus/promises-spec).
+
+### Why use promises?
+
+Asynchronous APIs are common in JavaScript to access the network or disk, to communicate with web workers and service workers, and even when using a timer. Most of these APIs use callback functions or events to communicate when a request is ready or has failed. While these techniques worked well in the days of simple web pages, they don't scale well to complete web applications.
+
+#### Old way: using events
+
+Using events to report asynchronous results has some major drawbacks:
+
+  - It fragments your code into many pieces scattered among event handlers.
+  - It's possible to get into race conditions between defining the handlers and receiving the events.
+  - It often requires creating a class or using globals just to maintain state.
+
+These make error handling difficult. For an example, look at any XMLHttpRequest code.
+
+#### Old way: using callbacks
+
+Another solution is to use callbacks, typically with anonymous functions. An example might look like the following:
+
+```
+function isUserTooYoung(id, callback) {
+  openDatabase(function(db) {
+    getCollection(db, 'users', function(col) {
+      find(col, {'id': id}, function(result) {
+        result.filter(function(user) {
+          callback(user.age < cutoffAge);
+        });
+      });
+    });
+  });
+}
+
+```
+
+The callback approach has two problems:
+
+ - The more callbacks that you use in a callback chain, the harder it is to read and analyze its behavior.
+ - Error handling becomes problematic. For example, what happens if a function receives an illegal value and/or throws an exception?
+
+
+### Using promises
+
+Promises provide a standardized way to manage asynchronous operations and handle errors. The above example becomes much simpler using promises:
+
+```
+function isUserTooYoung(id) {
+  return openDatabase() // returns a promise
+  .then(function(db) {return getCollection(db, 'users');})
+  .then(function(col) {return find(col, {'id': id});})
+  .then(function(user) {return user.age < cutoffAge;});
+}
+```
+
+Think of a promise as an object that waits for an asynchronous action to finish, then calls a second function.
+
+You can schedule that second function by calling .then() and passing in the function. When the asynchronous function finishes, it gives its result to the promise and the promise gives that to the next function (as a parameter).
+
+Notice that there are several calls to .then() in a row. Each call to .then() waits for the previous promise, runs the next function, then converts the result to a promise if needed. This lets you painlessly chain synchronous and asynchronous calls. It simplifies your code so much that most new web specifications return promises from their asynchronous methods.
+
+In the following example, we convert the asynchronous task of setting an image src attribute into a promise.
+
+```
+function loadImage(url) {
+  // wrap image loading in a promise
+  return new Promise(function(resolve, reject) {
+    // A new promise is "pending"
+    var image = new Image();
+    image.src = url;
+    image.onload = function() {
+      // Resolving a promise changes its state to "fulfilled"
+      // unless you resolve it with a rejected promise
+      resolve(image);
+    };
+    image.onerror = function() {
+      // Rejecting a promise changes its state to "rejected"
+      reject(new Error('Could not load image at ' + url));
+    };
+  });
+}
+```
+
+Here's a typical pattern for creating a promise:
+
+```
+var promise = new Promise(function(resolve, reject) {
+  // do a thing, possibly async, then...
+
+  if (/* everything turned out fine */) {
+    resolve("Stuff worked!");
+  }
+  else {
+    reject(Error("It broke"));
+  }
+});
+
+```
+
+The promise constructor takes one argument—a callback with two parameters: resolve and reject. Do something within the callback, perhaps async, then call resolve if everything worked, or otherwise call reject.
+
+Like throw in plain old JavaScript, it's customary, but not required, to reject with an Error object. The benefit of Error objects is that they capture a stack trace, making debugging tools more helpful.
+
+Here's one way to use that promise:
+
+```
+promise.then(function(result) {
+  console.log("Success!", result); // "Stuff worked!"
+}, function(err) {
+  console.log("Failed!", err); // Error: "It broke"
+});
+
+```
+
+The then() method takes two arguments, a callback for a success case, and another for the failure case. Both are optional, so you can add a callback for the success or failure case only.
+
+A more common practice is to use .then() for success cases and .catch() for errors.
+
+```
+promise.then(function(result) {
+  console.log("Success!", result);
+}).catch(function(error) {
+  console.log("Failed!", error);
+})
+```
+
+There's nothing special about catch(), it's equivalent to then(undefined, func), but it's more readable. Note that the two code examples above do not behave the same way. The latter example is equivalent to:
+
+There's nothing special about catch(), it's equivalent to then(undefined, func), but it's more readable. Note that the two code examples above do not behave the same way. The latter example is equivalent to:
+
+```
+promise.then(function(response) {
+  console.log("Success!", response);
+}).then(undefined, function(error) {
+  console.log("Failed!", error);
+})
+```
+
+The difference is subtle, but extremely useful. Promise rejections skip forward to the next then() with a rejection callback (or catch(), since they're equivalent). With then(func1, func2), func1 or func2 will be called, never both. But with then(func1).catch(func2), both will be called if func1 rejects, as they're separate steps in the chain.
+
+### Promise chains
+
 
 
 
