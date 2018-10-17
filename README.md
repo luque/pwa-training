@@ -1268,6 +1268,22 @@ Workbox is a library that bakes in a set of best practices and removes the boile
     - Helpful debugging
     - Greater flexibility and feature set than sw-precache and sw-toolbox
 
+### Who is using Workbox?
+
+Pinterest's PWA:
+  - Precaching.
+  - Fast navigations (some navigation requests bypass the network).
+
+WIRED's PWA:
+  - workbox-cli generates their service worker each time they build.
+  - offline reading experience: offline article reading list from window.caches
+
+### Next 3.0 release features
+
+  - Improved background sync
+  - Smaller runtime payloads: workbox-sw 2.0 47KB -> workbox-sw 3.0 15KB
+
+
 ### Lab
 
 Use the workbox-sw.js library and the workbox-build Node.js module to build an offline-capable PWA.
@@ -1355,3 +1371,4 @@ workbox.routing.registerRoute(/(.*)article(.*)\.html/, args => {
 - PWA rocks: http://pwa.rocks
 - Offline Storage for PWAs: https://medium.com/dev-channel/offline-storage-for-progressive-web-apps-70d52695513c
 - Workbox: https://developers.google.com/web/tools/workbox/
+- Workbox: Flexible PWA Libraries: https://www.youtube.com/watch?time_continue=11&v=DtuJ55tmjps
