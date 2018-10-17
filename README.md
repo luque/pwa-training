@@ -1119,6 +1119,8 @@ or
 
 IDBKeyRange.bound(lowerIndexKey, upperIndexKey);
 ```
+
+```
 function searchItems(lower, upper) {
   if (lower === '' && upper === '') {return;}
 
