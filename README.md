@@ -656,6 +656,113 @@ The difference is subtle, but extremely useful. Promise rejections skip forward 
 
 ### Promise chains
 
+In a promise chain, the output of one function serves as input for the next.
+
+The then() method schedules a function to be called when the previous promise is fulfilled. When the promise is fulfilled, .then() extracts the promise's value (the value the promise resolves to), executes the callback function, and wraps the returned value in a new promise.
+
+When a promise rejects (or throws an exception), it jumps to the first .catch() call following the error and passes control to its function.
+
+```
+function processImage(imageName, domNode) {
+  // returns an image for the next step. The function called in
+  // the return statement must also return the image.
+  // The same is true in each step below.
+  return loadImage(imageName)
+  .then(function(image) {
+    // returns an image for the next step.
+    return scaleToFit(150, 225, image);
+  })
+  .then(function(image) {
+    // returns the image for the next step.
+    return watermark('Google Chrome', image);
+  })
+  .then(function(image) {
+    // Attach the image to the DOM after all processing has been completed.
+    // This step does not need to return in the function or here in the
+    // .then() because we are not passing anything on
+    showImage(image);
+  })
+  .catch(function(error) {
+    console.log('We had a problem in running processImage', error);
+  });
+}
+```
+
+You can use multiple catches in a promise chain to "recover" from errors in a promise chain. For example, the following code continues on with a fallback image if processImage or scaleToFit rejects:
+
+```
+function processImage(imageName, domNode) {
+  return loadImage(imageName)
+  .then(function(image) {
+    return scaleToFit(150, 225, image);
+  })
+  .catch(function(error) {
+    console.log('Error in loadImage() or scaleToFit()', error);
+    console.log('Using fallback image');
+    return fallbackImage();
+  })
+  .then(function(image) {
+    return watermark('Google Chrome', image);
+  })
+  .then(function(image) {
+    showImage(image);
+  })
+  .catch(function(error) {
+    console.log('We had a problem with watermark() or showImage()', error);
+  });
+}
+```
+
+Not all promise-related functions have to return a promise. If the functions in a promise chain are synchronous, they don't need to return a promise.
+
+The scaleToFit function is part of the image processing chain and doesn't return a promise:
+
+```
+function scaleToFit(width, height, image) {
+  image.width = width;
+  image.height = height;
+  console.log('Scaling image to ' + width + ' x ' + height);
+  return image;
+}
+```
+
+### Promise.all
+
+Often we want to take action only after a collection of asynchronous operations have completed successfully. Promise.all returns a promise that resolves if all of the promises passed into it resolve. If any of the passed-in promises reject, then Promise.all rejects with the reason of the first promise that rejected. This is very useful for ensuring that a group of asynchronous actions complete before proceeding to another step.
+
+```
+var promise1 = getJSON('/users.json');
+var promise2 = getJSON('/articles.json');
+
+Promise.all([promise1, promise2]) // Array of promises to complete
+.then(function(results) {
+  console.log('all data has loaded');
+})
+.catch(function(error) {
+  console.log('one or more requests have failed: ' + error);
+});
+```
+
+### Promise.race
+
+Another promise method that you may see referenced is Promise.race. Promise.race takes a list of promises and settles as soon as the first promise in the list settles. If the first promise resolves, Promise.race resolves with the corresponding value, if the first promise rejects, Promise.race rejects with the corresponding reason. The following code shows example usage of Promise.race:
+
+```
+Promise.race([promise1, promise2])
+.then(function(value) {
+  console.log(value);
+})
+.catch(function(reason) {
+  console.log(reason);
+});
+```
+
+If one of the promises resolves first, the then block executes and logs the value of the resolved promise. If one of the promises rejects first, the catch block executes and logs the reason for the promise rejection.
+
+
+## Working with IndexedDB
+
+
 
 
 
