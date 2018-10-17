@@ -762,6 +762,421 @@ If one of the promises resolves first, the then block executes and logs the valu
 
 ## Working with IndexedDB
 
+We are using Jake Archibald's IndexedDB Promised library, which is very similar to the IndexedDB API, but uses promises rather than events. More info at: https://github.com/jakearchibald/idb
+
+### What is IndexedDB from MDN:
+
+"IndexedDB is a low-level API for client-side storage of significant amounts of structured data, including files/blobs. This API uses indexes to enable high performance searches of this data. While DOM Storage is useful for storing smaller amounts of data, it is less useful for storing larger amounts of structured data. IndexedDB provides a solution."
+
+Each IndexedDB database is unique to an origin (typically, this is the site domain or subdomain), meaning it cannot access or be accessed by any other origin.
+
+Data storage limits are usually quite large, if they exist at all, but different browsers handle limits and data eviction differently. See https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API/Browser_storage_limits_and_eviction_criteria for more information.
+
+For example, in Firefox the maximum browser storage space is dynamic --it is based on your hard drive size. The global limit is calculated as 50% of free disk space. So if your hard drive is 500 GB, then the total storage for a browser is 250 GB. If this is exceeded, a process called origin eviction comes into play, deleting an entire origin's worth of data until the storage amount goes under the limit again. There's also another limit called group limit — this is defined as 20% of the global limit, but it has a minimum of 10 MB and a maximum of 2 GB. Each origin is part of a group (group of origins). There's one group for each eTLD+1 domain.
+
+### IndexedDB terms
+
+Database - This is the highest level of IndexedDB. It contains the object stores, which in turn contain the data you would like to persist. You can create multiple databases with whatever names you choose, but generally there is one database per app.
+
+Object store - An object store is an individual bucket to store data. You can think of object stores as being similar to tables in traditional relational databases. Typically, there is one object store for each 'type' (not JavaScript data type) of data you are storing. For example, given an app that persists blog posts and user profiles, you could imagine two object stores. Unlike tables in traditional databases, the actual JavaScript data types of data within the store do not need to be consistent (for example, if there are three people in the 'people' object store, their age properties could be 53, 'twenty-five', and unknown ).
+
+Index - An Index is a kind of object store for organizing data in another object store (called the reference object store) by an individual property of the data. The index is used to retrieve records in the object store by this property. For example, if you're storing people, you may want to fetch them later by their name, age, or favorite animal.
+
+Transaction - A transaction is wrapper around an operation, or group of operations, that ensures database integrity. If one of the actions within a transaction fail, none of them are applied and the database returns to the state it was in before the transaction began. All read or write operations in IndexedDB must be part of a transaction. This allows for atomic read-modify-write operations without worrying about other threads acting on the database at the same time.
+
+Cursor - A mechanism for iterating over multiple records in database.
+
+
+### Checking for IndexedDB support
+
+Because IndexedDB isn't supported by all browsers, we need to check that the user's browser supports it before using it. The easiest way is to check the window object:
+
+```
+if (!('indexedDB' in window)) {
+  console.log('This browser doesn\'t support IndexedDB');
+  return;
+}
+```
+
+### Opening a database
+
+```
+idb.open(name, version, upgradeCallback)
+```
+
+This method returns a promise that resolves to a database object. When using idb.open, you provide a name, version number, and an optional callback to set up the database.
+
+An example:
+
+```
+(function() {
+  'use strict';
+
+  //check for support
+  if (!('indexedDB' in window)) {
+    console.log('This browser doesn\'t support IndexedDB');
+    return;
+  }
+
+  var dbPromise = idb.open('test-db1', 1);
+
+})();
+```
+
+### Working with object stores
+
+To ensure database integrity, object stores can only be created and removed in the callback function in idb.open.
+
+The callback receives an instance of UpgradeDB, a special object in the IDB Promised library that is used to create object stores.
+
+```
+upgradeDb.createObjectStore('storeName', options);
+```
+
+Below is an example of the createObjectStore method:
+
+```
+(function() {
+  'use strict';
+
+  //check for support
+  if (!('indexedDB' in window)) {
+    console.log('This browser doesn\'t support IndexedDB');
+    return;
+  }
+
+  var dbPromise = idb.open('test-db2', 1, function(upgradeDb) {
+    console.log('making a new object store');
+    if (!upgradeDb.objectStoreNames.contains('firstOS')) {
+      upgradeDb.createObjectStore('firstOS');
+    }
+  });
+
+})();
+```
+
+When you define object stores, you can define how data is uniquely identified in the store using the primary key. You can define a primary key by either defining a key path, or by using a key generator.
+
+A key path is a property that always exists and contains a unique value:
+
+```
+upgradeDb.createObjectStore('people', {keyPath: 'email'});
+```
+
+You could also use a key generator, such as autoIncrement. The key generator creates a unique value for every object added to the object store. By default, if we don't specify a key, IndexedDB creates a key and stores it separately from the data.
+
+```
+upgradeDb.createObjectStore('notes', {autoIncrement:true});
+```
+
+This example creates an object store called "notes" and sets the primary key to be assigned automatically as an auto incrementing number.
+
+```
+upgradeDb.createObjectStore('logs', {keyPath: 'id', autoIncrement:true});
+```
+
+```
+function() {
+  'use strict';
+
+  //check for support
+  if (!('indexedDB' in window)) {
+    console.log('This browser doesn\'t support IndexedDB');
+    return;
+  }
+
+  var dbPromise = idb.open('test-db3', 1, function(upgradeDb) {
+    if (!upgradeDb.objectStoreNames.contains('people')) {
+      upgradeDb.createObjectStore('people', {keyPath: 'email'});
+    }
+    if (!upgradeDb.objectStoreNames.contains('notes')) {
+      upgradeDb.createObjectStore('notes', {autoIncrement: true});
+    }
+    if (!upgradeDb.objectStoreNames.contains('logs')) {
+      upgradeDb.createObjectStore('logs', {keyPath: 'id', autoIncrement: true});
+    }
+  });
+})();
+```
+
+### Defining indexes
+
+Indexes are a kind of object store used to retrieve data from the reference object store by a specified property.
+
+An index lives inside the reference object store and contains the same data, but uses the specified property as its key path instead of the reference store's primary key.
+
+To create an index, call the createIndex method on an object store instance:
+
+```
+objectStore.createIndex('indexName', 'property', options);
+```
+
+The final argument lets you define two options that determine how the index operates: unique and multiEntry.  If unique is set to true, the index does not allow duplicate values for a single key. multiEntry determines how createIndex behaves when the indexed property is an array. If it's set to true, createIndex adds an entry in the index for each array element. Otherwise, it adds a single entry containing the array.
+
+```
+(function() {
+  'use strict';
+
+  //check for support
+  if (!('indexedDB' in window)) {
+    console.log('This browser doesn\'t support IndexedDB');
+    return;
+  }
+
+  var dbPromise = idb.open('test-db4', 1, function(upgradeDb) {
+    if (!upgradeDb.objectStoreNames.contains('people')) {
+      var peopleOS = upgradeDb.createObjectStore('people', {keyPath: 'email'});
+      peopleOS.createIndex('gender', 'gender', {unique: false});
+      peopleOS.createIndex('ssn', 'ssn', {unique: true});
+    }
+    if (!upgradeDb.objectStoreNames.contains('notes')) {
+      var notesOS = upgradeDb.createObjectStore('notes', {autoIncrement: true});
+      notesOS.createIndex('title', 'title', {unique: false});
+    }
+    if (!upgradeDb.objectStoreNames.contains('logs')) {
+      var logsOS = upgradeDb.createObjectStore('logs', {keyPath: 'id',
+        autoIncrement: true});
+    }
+  });
+})();
+```
+
+### Working with data
+
+All data operations in IndexedDB are carried out inside a transaction. Each operation has this form:
+
+   - Get database object
+   - Open transaction on database
+   - Open object store on transaction
+   - Perform operation on object store
+
+Transactions are specific to one or more object stores, which we define when we open the transaction.
+
+They can be read-only or read and write.
+
+#### Creating data
+
+To create data, call the add method on the object store and pass in the data you want to add.
+
+```
+someObjectStore.add(data, optionalKey);
+```
+
+The data parameter can be data of any type: a string, number, object, array, and so forth. The only restriction is if the object store has a defined keypath, the data must contain this property and the value must be unique.
+
+The add method returns a promise that resolves once the object has been added to the store.
+
+Add occurs within a transaction, so even if the promise resolves successfully it doesn't necessarily mean the operation worked. Remember, if one of the actions in the transaction fails, all of the operations in the transaction are rolled back. To be sure that the add operation was carried out, we need to check if the whole transaction has completed using the transaction.complete method. transaction.complete is a promise that resolves when the transaction completes and rejects if the transaction errors.
+
+```
+dbPromise.then(function(db) {
+  var tx = db.transaction('store', 'readwrite');
+  var store = tx.objectStore('store');
+  var item = {
+    name: 'sandwich',
+    price: 4.99,
+    description: 'A very tasty sandwich',
+    created: new Date().getTime()
+  };
+  store.add(item);
+  return tx.complete;
+}).then(function() {
+  console.log('added item to the store os!');
+});
+```
+
+#### Reading data
+
+To read data, call the get method on the object store. The get method takes the primary key of the object you want to retrieve from the store:
+
+```
+someObjectStore.get(primaryKey);
+```
+
+As with add, the get method returns a promise and must happen within a transaction:
+
+```
+dbPromise.then(function(db) {
+  var tx = db.transaction('store', 'readonly');
+  var store = tx.objectStore('store');
+  return store.get('sandwich');
+}).then(function(val) {
+  console.dir(val);
+});
+```
+
+#### Updating data
+
+```
+dbPromise.then(function(db) {
+  var tx = db.transaction('store', 'readwrite');
+  var store = tx.objectStore('store');
+  var item = {
+    name: 'sandwich',
+    price: 99.99,
+    description: 'A very tasty, but quite expensive, sandwich',
+    created: new Date().getTime()
+  };
+  store.put(item);
+  return tx.complete;
+}).then(function() {
+  console.log('item updated!');
+});
+```
+
+#### Deleting data
+
+```
+dbPromise.then(function(db) {
+  var tx = db.transaction('store', 'readwrite');
+  var store = tx.objectStore('store');
+  store.delete(key);
+  return tx.complete;
+}).then(function() {
+  console.log('Item deleted');
+});
+```
+
+### Getting all the data
+
+So far we have only retrieved objects from the store one at a time. We can also retrieve all of the data (or subset) from an object store or index using either the getAll method or using cursors.
+
+#### Using getAll method
+
+The simplest way to retrieve all of the data is to call the getAll method on the object store or index, like this:
+
+```
+someObjectStore.getAll(optionalConstraint);
+```
+
+As with all other database operations, this operation happens inside a transaction.
+
+```
+dbPromise.then(function(db) {
+  var tx = db.transaction('store', 'readonly');
+  var store = tx.objectStore('store');
+  return store.getAll();
+}).then(function(items) {
+  console.log('Items by name:', items);
+});
+```
+
+#### Using cursors
+
+A cursor selects each object in an object store or index one by one, letting you do something with the data as it is selected.
+
+Cursors, like the other database operations, work within transactions.
+
+We create the cursor by calling the openCursor method on the object store, like this:
+
+```
+someObjectStore.openCursor(optionalKeyRange, optionalDirection);
+```
+
+This method returns a promise that resolves with a cursor object representing the first object in the object store or undefined if there is no object.
+
+To move on to the next object in the object store, we call cursor.continue. This returns a promise that resolves with the next object, or undefined if there are no more objects. We put this inside a loop to move through all of the entries in the store one by one.
+
+The optional key range in the openCursor method limits the iteration to a subset of the objects in the store.
+
+The direction option can be next or prev, specifying forward or backward traversal through the data.
+
+```
+dbPromise.then(function(db) {
+  var tx = db.transaction('store', 'readonly');
+  var store = tx.objectStore('store');
+  return store.openCursor();
+}).then(function logItems(cursor) {
+  if (!cursor) {
+    return;
+  }
+  console.log('Cursored at:', cursor.key);
+  for (var field in cursor.value) {
+    console.log(cursor.value[field]);
+  }
+  return cursor.continue().then(logItems);
+}).then(function() {
+  console.log('Done cursoring');
+});
+```
+
+### Working with ranges and indexes
+
+Indexes let us fetch the data in an object store by a property other than the primary key.
+
+We can create an index on any property (which becomes the keypath for the index), specify a range on that property, and get the data within the range using the getAll method or a cursor.
+
+We define the range using the IDBKeyRange object:
+
+```
+IDBKeyRange.lowerBound(indexKey);
+
+or
+
+IDBKeyRange.upperBound(indexKey);
+
+or
+
+IDBKeyRange.bound(lowerIndexKey, upperIndexKey);
+```
+function searchItems(lower, upper) {
+  if (lower === '' && upper === '') {return;}
+
+  var range;
+  if (lower !== '' && upper !== '') {
+    range = IDBKeyRange.bound(lower, upper);
+  } else if (lower === '') {
+    range = IDBKeyRange.upperBound(upper);
+  } else {
+    range = IDBKeyRange.lowerBound(lower);
+  }
+
+  dbPromise.then(function(db) {
+    var tx = db.transaction(['store'], 'readonly');
+    var store = tx.objectStore('store');
+    var index = store.index('price');
+    return index.openCursor(range);
+  }).then(function showRange(cursor) {
+    if (!cursor) {return;}
+    console.log('Cursored at:', cursor.key);
+    for (var field in cursor.value) {
+      console.log(cursor.value[field]);
+    }
+    return cursor.continue().then(showRange);
+  }).then(function() {
+    console.log('Done cursoring');
+  });
+}
+```
+
+### Using database versioning
+
+When we call idb.open, we can specify the database version number in the second parameter. If this version number is greater than the version of the existing database, the upgrade callback executes, allowing us to add object stores and indexes to the database.
+
+The UpgradeDB object has a special oldVersion property, which indicates the version number of the database existing in the browser.
+
+```
+var dbPromise = idb.open('test-db7', 2, function(upgradeDb) {
+  switch (upgradeDb.oldVersion) {
+    case 0:
+      upgradeDb.createObjectStore('store', {keyPath: 'name'});
+    case 1:
+      var peopleStore = upgradeDb.transaction.objectStore('store');
+      peopleStore.createIndex('price', 'price');
+  }
+});
+```
+
+### localStorage vs IndexedDB
+
+On the surface the two technologies may seem directly comparable, however if you spend some time with them you'll soon realize they are not. They were designed to achieve a similar goal, client side storage, but they approach the task at hand from significantly different perspectives and work best with different amounts of data.
+
+localStorage, or more accurately Web Storage, was designed for smaller amounts of data. It's essentially a strings only key - value storage, with a simplistic synchronous API. That last part is key. Although there's nothing in the specification that prohibits an asynchronous DOM Storage, currently all implementations are synchronous (i.e. blocking requests). Even if you didn't mind using a naive key - value storage for larger amounts of data, your clients will mind waiting forever for your application to load.
+
+indexedDB, on the other hand, was designed to work with significantly larger amounts of data. First, in theory, it provides both a synchronous and an asynchronous API. In practice, however, all current implementations are asynchronous, and requests will not block the user interface from loading. Additionally, indexedDB, as the name reveals, provides indexes. You can run rudimentary queries on your database and fetch records by looking up theirs keys in specific key ranges. indexedDB also supports transactions, and provides simple types (e.g. Date).
+
+At the end of the day, it's completely up to you if you use DOM Storage or indexedDB, or both, in your application. A good use case for DOM Storage would be to store simple session data, for example a user's name, and save you some requests to your actual database. indexedDB's additional features, on the other hand, could help you store all the data you need for your application to work offline. 
+
 
 
 
