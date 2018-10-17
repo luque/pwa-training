@@ -1363,6 +1363,216 @@ workbox.routing.registerRoute(/(.*)article(.*)\.html/, args => {
   The .then statement receives the response passed in from the handle method. If the response doesn't exist, then it means the user is offline and the response was not previously cached. 
 
 
+## Responsive Design
+
+Users interact with the web using an increasingly diverse range of devices. These devices all have different viewport sizes, pixel widths and densities, scroll and zoom capabilities, etc.
+
+
+"Responsive design", coined by Ethan Marcotte in A List Apart, refers to a set of technologies that make sites adapt to the form factor the site is viewed in. These technologies are:
+ - Fluid Grids: All the content measurements are expressed in relative units to ensure that the layout will remain as consistent as possible across form factors.
+ - Flexible images: All images are expressed using relative units so that they resize along with the content.
+ - Media Queries: A way to rearrange your layout in CSS without modifying your HTML.
+
+### Progressive Enhancement:
+
+We need to make sure we provide a good default experience with a technology or language (such as HTML) that is widely supported, and then conditionally add the features we want based on support for those features.
+
+Remember: The content is the most important part of our app. The goal of progressive enhancement is to preserve the content, so that if something breaks, our content will still be there in our default experience. 
+
+### PWA golden rule:
+
+Never make users scroll horizontally.
+
+Sounds basic, but lots of site break this rule by making images, inputs and other large elements on the page with fixed sizes.
+
+​Using relative measurement units (em, rem, or percentages) will reduce the severity of this issue.
+
+
+```
+img {
+  max-width: 100%;
+}
+```
+
+### Viewport meta tag:
+
+```
+<meta name="viewport" content="width=device-width, initial-scale=1">
+```
+
+Setting the viewport meta tag correctly, browsers scale down a page to fit a (virtual) 980px wide viewport either by zooming into a portion of the page that matches the available screen size or by shrinking the page until it fits into the available viewport, rendering the text impossible to read.
+
+The meta viewport tag is designed to work with responsive layouts. If you use it in a fixed size layout it will break things until you convert the site to a responsive layout. 
+
+### Relative sizing is not the (full) solution:
+
+For a while developers thought that relative sizing layout and images was enough. This is not always the case… Sometimes the design is too big on desktop and too small on mobile. 
+
+### Media queries
+
+This is why media queries were invented.
+
+It's a simple concept: modify the layout of your site based on different criteria (mostly width but not exclusively).
+
+If we only had to worry about devices this may be all the queries that we need to worry about, right?
+
+
+```
+/* elements in common for phones and tablets */
+
+@media (max-width: 480px) {
+  /* layout for phones */
+}
+
+@media (max-width: 720px) { 
+  /* layout for tablets */  
+}
+```
+
+If we want to cover our bases with media queries then we need to worry about more than just phones and tablets. We have 4 queries to worry about for phone, tablet, laptop and widescreen devices.  What happens if the phone or tablet is placed in landscape mode instead of portrait?  What happens with retina devices?
+
+  - 320,480px: phone
+  - 768px: tablet
+  - 922px: laptop
+  - 1200px: widescreen
+
+We will soon find ourselves with a large number of media queries and a nightmare of managing a large CSS file and how it changes.
+
+### Match breakpoints to content
+
+- Start small
+- Add major breakpoints
+- Add minor breakpoints if necessary
+- Optimize for reading: 70–80 characters per line
+
+### Content-based media queries
+
+1. Understand your users
+2. Understand your target devices
+3. Design content
+4. Use media queries to select layouts
+
+That doesn't mean you stop thinking about devices and device classes: you might want one column for phones, two columns for tablets, three columns for desktop — or whatever.
+
+### Mobile-first media queries
+
+```
+/* small */
+
+@media (min-width: 480px) {
+  /* medium */
+}
+@media (min-width: 720px) { 
+  /* large */  
+}
+```
+
+Remember the earlier media queries example? 
+
+In the mobile-first world of PWAs, we need to turn that around. Here we are using min-width instead of max-width in our media queries to handle medium and large form factors as the exception.
+
+calc():
+
+```
+img.thumb {
+  margin-right: 10px;
+  max-width: 400px;
+  width: calc((100% - 10px) / 2);
+}
+img.thumb: last-of-type {
+  margin-right: 0;
+}
+```
+
+### Content first
+
+Responsive design is about more than just changing layouts.
+
+Media queries can do more than just change layouts, they also allow designers to manipulate content, depending on the viewport size and device type.
+
+On a phone, you might want to make sure page content is visible when the user goes to your home page — so you might opt for a hamburger menu for navigation, and move ads lower on the page.
+
+
+  - Reorder
+  - Reposition
+  - Replace
+  - Remove (last resort): A better alternative to removing content is to use content appropriate to the displays you’re targeting
+
+### Keep it simple
+
+Help users get the content.
+
+Every step to get to content loses 20% of users.
+
+### CSS Flexbox
+
+ - Flexible sizing and alignment.
+ - Element reordering.
+ - Better performance than floats.
+
+```
+.container {
+  display: flex;
+  flex-flow: row wrap;
+}
+
+.child1, .child2, .child3, .child4, .child5 {
+  width: 100%;
+}
+
+@media (min-width: 600px) {
+  .child2, .child3, .child4, .child5 {
+    width: 50%;
+  }
+}
+
+@media (min-width: 800px) {
+  .container {
+    margin-left: auto;
+    margin-right: auto;
+    width: 800px;
+  }
+  .child1 { width: 60%; }
+  .child2 { width: 40%; }
+  .child3, .child4, .child5 { width: 33.33%; }
+}
+```
+
+- CSS Flexbox ordering:
+
+```
+.container {
+  display: flex;
+  flex-flow: row wrap;
+}
+
+.child1, .child2, .child3 {
+  width: 100%;
+}
+
+@media (min-width: 600px) {
+  .child1 {
+    order: 2;
+    width: 60%;
+  }
+  .child2 {
+    order: 1;
+    width: 40%;
+  }
+}
+```
+
+### CSS Grid
+
+ - Works with CSS Flexbox
+ - Optimized for UI design
+ - Separation of layout and content
+
+
+
+
+
+
 ## References
 
 - Progressive Web Apps Training by Google: https://developers.google.com/web/ilt/pwa/
@@ -1372,3 +1582,5 @@ workbox.routing.registerRoute(/(.*)article(.*)\.html/, args => {
 - Offline Storage for PWAs: https://medium.com/dev-channel/offline-storage-for-progressive-web-apps-70d52695513c
 - Workbox: https://developers.google.com/web/tools/workbox/
 - Workbox: Flexible PWA Libraries: https://www.youtube.com/watch?time_continue=11&v=DtuJ55tmjps
+- Responsive Web Design Patterns: https://developers.google.com/web/fundamentals/design-and-ux/responsive/patterns
+- 7 Habits of Highly Effective Media Queries: http://bradfrost.com/blog/post/7-habits-of-highly-effective-media-queries/#content
