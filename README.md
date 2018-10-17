@@ -1253,9 +1253,9 @@ self.addEventListener('fetch', function(event) {
 
 ### Using Workbox
 
-Workbox is the successor to sw-precache and sw-toolbox. It is a collection of libraries and tools used for generating a service worker, precaching, routing, and runtime-caching.
+Workbox is the successor to *sw-precache* and *sw-toolbox*. It is a collection of libraries and tools used for *generating a service worker*, *precaching*, *routing*, and *runtime-caching*.
 
-Workbox also includes modules for easily integrating background sync and Google Analytics into your service worker.
+Workbox also includes modules for easily integrating *background sync* and *Google Analytics* into your service worker.
 
 
 
