@@ -1178,6 +1178,83 @@ indexedDB, on the other hand, was designed to work with significantly larger amo
 At the end of the day, it's completely up to you if you use DOM Storage or indexedDB, or both, in your application. A good use case for DOM Storage would be to store simple session data, for example a user's name, and save you some requests to your actual database. indexedDB's additional features, on the other hand, could help you store all the data you need for your application to work offline. 
 
 
+## Live Data in the Service Worker
+
+A general guideline for data storage is that URL addressable resources should be stored with the Cache interface, and other data should be stored with IndexedDB.
+
+For example HTML, CSS, and JS files should be stored in the cache, while JSON data should be stored in IndexedDB.
+
+### Why Cache API and IndexedDB?
+
+Both are asynchronous and accessible in service workers, web workers, and the window interface.
+
+IndexedDB is widely supported, and the Cache interface is supported in Chrome, Firefox, Opera, and Samsung Internet.
+
+### How Much Can You Store?
+
+Different browsers allow different amounts of offline storage.
+
+
+The service worker activation event is a good time to create a database. Creating a database during the activation event means that it will only be created (or opened, if it already exists) when a new service worker takes over, rather than each time the app runs (which is inefficient). It's also likely better than using the service worker's installation event, since the old service worker will still be in control at that point, and there could be conflicts if a new database is mixed with an old service worker.
+
+```
+function createDB() {
+  idb.open('products', 1, function(upgradeDB) {
+    var store = upgradeDB.createObjectStore('beverages', {
+      keyPath: 'id'
+    });
+    store.put({id: 123, name: 'coke', price: 10.99, quantity: 200});
+    store.put({id: 321, name: 'pepsi', price: 8.99, quantity: 100});
+    store.put({id: 222, name: 'water', price: 11.99, quantity: 300});
+  });
+}
+
+self.addEventListener('activate', function(event) {
+  event.waitUntil(
+    createDB()
+  );
+});
+```
+
+The service worker installation event is a good time to cache static assets like these. This ensures that all the resources a service worker is expected to have are cached when the service worker is installed.
+
+```
+function cacheAssets() {
+  return caches.open('cache-v1')
+  .then(function(cache) {
+    return cache.addAll([
+      '.',
+      'index.html',
+      'styles/main.css',
+      'js/offline.js',
+      'img/coke.jpg'
+    ]);
+  });
+}
+
+self.addEventListener('install', function(event) {
+  event.waitUntil(
+    cacheAssets()
+  );
+});
+
+self.addEventListener('fetch', function(event) {
+  event.respondWith(
+    caches.match(event.request).then(function(response) {
+      // Check cache but fall back to network
+      return response || fetch(event.request);
+    })
+  );
+});
+
+```
+
+### Using Workbox
+
+Workbox is the successor to sw-precache and sw-toolbox. It is a collection of libraries and tools used for generating a service worker, precaching, routing, and runtime-caching.
+
+Workbox also includes modules for easily integrating background sync and Google Analytics into your service worker.
+
 
 
 
@@ -1187,3 +1264,4 @@ At the end of the day, it's completely up to you if you use DOM Storage or index
 - The Offline Cookbook: https://developers.google.com/web/fundamentals/instant-and-offline/offline-cookbook/
 - Promises, an Introduction: https://developers.google.com/web/fundamentals/primers/promises
 - PWA rocks: http://pwa.rocks
+- Offline Storage for PWAs: https://medium.com/dev-channel/offline-storage-for-progressive-web-apps-70d52695513c
