@@ -1251,13 +1251,100 @@ self.addEventListener('fetch', function(event) {
 
 ```
 
-### Using Workbox
+## Using Workbox
 
 Workbox is the successor to *sw-precache* and *sw-toolbox*. It is a collection of libraries and tools used for *generating a service worker*, *precaching*, *routing*, and *runtime-caching*.
 
 Workbox also includes modules for easily integrating *background sync* and *Google Analytics* into your service worker.
 
+### Why?
 
+Workbox is a library that bakes in a set of best practices and removes the boilerplate every developer writes when working with service workers:
+    - Precaching
+    - Runtime caching
+    - Strategies
+    - Request routing
+    - Background sync
+    - Helpful debugging
+    - Greater flexibility and feature set than sw-precache and sw-toolbox
+
+### Lab
+
+Use the workbox-sw.js library and the workbox-build Node.js module to build an offline-capable PWA.
+
+See labs/workbox-lab/project
+
+  - Write a basic service worker using workbox-sw
+
+  Rather than adding files to the list manually, workbox-build can generate the manifest for us. Using a tool like workbox-build has multiple advantages:
+
+  1. The tool can be integrated into our build process. Adding workbox-build to our build process eliminates the need for manual updates to the precache manifest each time that we update the apps files.
+  2. workbox-build automatically adds "revision hashes" to the files in the manifest entries. The revision hashes enable Workbox to intelligently track when files have been modified or are outdated, and automatically keep caches up to date with the latest file versions. Workbox can also remove cached files that are no longer in the manifest, keeping the amount of data stored on a user's device to a minimum. You'll see what workbox-build and the file revision hashes look like in the next section.
+
+While we are using workbox-build with gulp in this lab, Workbox also supports tools like webpack with workbox-webpack-plugin and npm-build processed with workbox-cli.
+
+  - Inject a manifest into the service worker
+
+  Now we need to configure workbox-build to inject a precache manifest in the precacheAndRoute call in the service worker file.
+
+  - Register and test the service worker
+
+  In addition to precaching, the precacheAndRoute method sets up an implicit cache-first handler, ensuring that the precached resources are served offline.
+
+  - Add routes to the service worker
+
+  workbox-sw.js has a routing module that lets you easily add routes to your service worker.
+
+```
+workbox.routing.registerRoute(
+  /(.*)articles(.*)\.(?:png|gif|jpg)/,
+  workbox.strategies.cacheFirst({
+    cacheName: 'images-cache',
+    plugins: [
+      new workbox.expiration.Plugin({
+        maxEntries: 50,
+        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+      })
+    ]
+  })
+);
+```
+
+  - Use a customized networkFirst cache strategy
+
+  Sometimes content must always be kept up-to-date (e.g., news articles, stock figures, etc.). For this kind of data, the cacheFirst strategy is not the best solution. Instead, we can use the networkFirst strategy to fetch the newest content first, and only if that fails does the service worker get old content from the cache.
+
+```
+const articleHandler = workbox.strategies.networkFirst({
+  cacheName: 'articles-cache',
+  plugins: [
+    new workbox.expiration.Plugin({
+      maxEntries: 50,
+    })
+  ]
+});
+
+workbox.routing.registerRoute(/(.*)article(.*)\.html/, args => {
+  return articleHandler.handle(args);
+});
+```
+
+  - Handle invalid responses
+
+  The handle method returns a promise resolving with the response, so we can access the response with a .then.
+
+```
+.then(response => {
+    if (!response) {
+      return caches.match('pages/offline.html');
+    } else if (response.status === 404) {
+      return caches.match('pages/404.html');
+    }
+    return response;
+  });
+```
+
+  The .then statement receives the response passed in from the handle method. If the response doesn't exist, then it means the user is offline and the response was not previously cached. 
 
 
 ## References
@@ -1267,3 +1354,4 @@ Workbox also includes modules for easily integrating *background sync* and *Goog
 - Promises, an Introduction: https://developers.google.com/web/fundamentals/primers/promises
 - PWA rocks: http://pwa.rocks
 - Offline Storage for PWAs: https://medium.com/dev-channel/offline-storage-for-progressive-web-apps-70d52695513c
+- Workbox: https://developers.google.com/web/tools/workbox/
