@@ -1663,12 +1663,66 @@ We use all the techniques we discussed. Combining media queries and srcset to sp
 </picture>
 ```
 
->> Tools like **responsivebreakpoints.com** will generate the images and the corresponding code for you so you don’t have to do 
+Tools like **responsivebreakpoints.com** will generate the images and the corresponding code for you so you don’t have to do 
 
 
+## PWA Architectures
 
+### Instant loading with service workers and application shells
 
+Developing web apps with offline functionality and high performance depends on using service workers in combination with a client-side storage API, such as the Cache Storage API or IndexedDB.
 
+Service workers provide services such as:
+ - Intercepting HTTP/HTTPS requests so your app can decide what gets served from a cache, the local data store, or the network. A service worker cannot access the DOM but it can access the Cache Storage API, make network requests using the Fetch API, and persist data using the IndexedDB API. Besides intercepting network requests, service workers can use postMessage() to communicate between the service worker and pages it controls (e.g. to request DOM updates).
+ - Receiving push messages from your server.
+ - Letting the user do work when offline by holding onto a set of tasks until the browser is on the network (that is, background synchronization).
+
+A service worker has an intentionally short lifetime. It wakes up when it gets an event and runs only as long as necessary to process it.
+
+#### Application shell
+
+PWAs tend to be architected around an application shell.
+
+This contains the local resources that your web app needs to load the skeleton of your user interface so it works offline and populates its content using JavaScript.
+
+If the application shell has been cached by service worker, then on repeat visits the app shell allows you to get meaningful pixels on the screen really fast without the network. Making use of an app shell is not a hard requirement for building PWAs, but it can result in significant performance gains when cached and served correctly.
+
+If your website is a templated site (i.e. built using multiple templates combined with the actual text, images, and other resources that make up the site's content), then read Jeffrey Posnick's Offline-first for Your Templated Site to learn different strategies for caching and serving templated sites.
+
+What about browsers that do not support service workers?
+
+Service worker caching should be considered a progressive enhancement. If your web app follows the model of conditionally registering a service worker only if it is supported, then you get offline support on browsers with service workers. On browsers that do not support service workers the offline-specific code is never called and there is no overhead or breakage.
+
+When service workers are not supported, the assets are not cached offline but the content is still fetched over the network and the user still gets a basic experience.
+
+### Architectural styles and patterns
+
+1. Application shell (SSR both shell + content for entry page) + use JavaScript to fetch content for any further routes and do a "take over"
+1. Application shell (SSR) + use JavaScript to fetch content once the app shell is loaded
+1. Server-side rendering full page (full page caching)
+1. Client-side rendering full page (full page caching, potential for JSON payload bootstrapping via server)
+
+### What is an application shell?
+
+Think of your app's shell like the bundle of code you would publish to a native app store when building a native app. It is the load needed to get off the ground but might not be the whole story. For example, if you have a native news application, you upload all of the views and fonts and images necessary to render the basic skeleton of the app but not the actual news stories. The news is the dynamic content that is not uploaded to the native app store but is fetched at runtime when the app is opened.
+
+### Real world examples
+
+- AliExpress: https://developers.google.com/web/showcase/2016/aliexpress
+- BaBe: https://developers.google.com/web/showcase/2016/babe
+- Offline wikipedia app: https://wiki-offline.jakearchibald.com/wiki/Rick_and_Morty
+
+### Push notifications
+
+The push API is available on the web as well. This allows developers to reconnect with users even if the browser is not running.
+
+Push notifications enable an app that is not running in the foreground to alert users that it has information for them.
+
+A push notification originates on a remote server that you manage, and is pushed to your app on a user's device.
+
+Even if the user is not actively using your app, upon receiving a push notification the user can tap it to launch the associated app and see the details. Users can also ignore the notification, in which case the app is not activated.
+
+Each browser manages push notifications through their own system, called a "push service." When the user grants permission for Push on your site, the app subscribes to the browser's internal push service. This creates a special subscription object that contains the "endpoint URL" of the push service, which is different for each browser, and a public key. Your application server sends push messages to this URL, encrypted with the public key, and the push service sends it to the right client.
 
 
 
@@ -1687,3 +1741,4 @@ We use all the techniques we discussed. Combining media queries and srcset to sp
 - 7 Habits of Highly Effective Media Queries: http://bradfrost.com/blog/post/7-habits-of-highly-effective-media-queries/#content
 - Responsive Breakpoints Tool: http://responsivebreakpoints.com
 - Using WebP Images: https://css-tricks.com/using-webp-images/
+- Offlite-first for your Templated Site: https://jeffy.info/2016/11/02/offline-first-for-your-templated-site-part-1.html
