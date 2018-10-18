@@ -1569,6 +1569,107 @@ Every step to get to content loses 20% of users.
  - Separation of layout and content
 
 
+## Responsive images
+
+There are two major issues to consider when working with images on the web: performance and responsiveness.
+
+### What are responsive images?
+
+A method for providing the browser with multiple image sources depending on display density, size of the image element in the page, or any number of other factors. 
+-- Jason Grigsby
+
+### General principles
+
+ - Avoid images whenever possible.
+ - Use vector formats where possible: SVG or icon fonts.
+ - Use the lowest possible resolution and quality.
+ - Use the right format for the image type: WebP, PNG, JPEG.
+
+Incorporate lossless compression tools in your workflow.
+
+### Elements and attributes
+
+ - <picture>
+ - <source>
+ - srcset
+ - sizes
+
+### The <picture> and <source> elements
+
+The picture and source elements enable us to provide alternative sources for the same resource. 
+
+The browser will stop and load the first source element that it understands and load that image. If the browser can’t read the files specified in the source elements or if the browser doesn’t support the picture and source elements the default image will be loaded. 
+
+```
+<picture>
+    <source srcset="kittens.webp" type="image/webp">
+    <source srcset="kittens.jpg" type="image/jpeg">
+    <img src="kittens.jpg" alt="Two grey tabby kittens">
+</picture>
+```
+
+The source element can take an optional media attribute where you can specify a media query. When that media query is triggered then the image in the associated srcset attribute will be loaded.
+
+```
+<picture>
+    <source media="(min-width: 650px)" srcset="kitten-lg.png">
+    <source media="(min-width: 465px)" srcset="kitten-md.png">
+    <img src="kitten-small.png" alt="Cute kitten">
+</picture>
+```
+
+### The srcset attribute
+
+In this example we use srcset in an img element to handle different pixel densities. 
+
+If the display is a standard resolution display then we’ll use the 1x image, if the monitor is a 2x high DPI screen we’ll use. If the browser can’t understand the srcset attribute then it will use the regular src attribute and load our 1x image. 
+
+Using the x descriptor, you’ll always get the same image on the devices with similar device-pixel ratio, regardless if it’s a 15 inch laptop or a cell phone which have the same device-pixel ratio.
+
+```
+<img src="wallaby_1x.jpg" alt="Wallaby"
+    srcset="wallaby_1x.jpg 1x, wallaby_2x.jpg 2x" />
+```
+
+#### The width descriptor
+
+For a browser, there's a Catch-22 when it comes to choosing which image to download: the browser needs to know the dimensions of each image, but it can't know that without downloading each image to check.
+
+The w unit *tells* the browser the width of each image in pixels, thereby enabling the browser to choose the right image to retrieve – depending on the screen pixel density and the viewport size. 
+
+```
+<img src="small.jpg" alt="Wallaby"
+    srcset="small.jpg 500w, med.jpg 1000w, 
+    large.jpg 1500w">
+```
+
+### The sizes attribute
+
+The sizes attribute tells the browser the size or sizes of the element the srcset is attached to so that the browser can use the appropriate image. In this case, we are telling the browser that the image will be displayed at 50% of the viewport width.
+
+```
+<img src="small.jpg" srcset="small.jpg 500w, medium.jpg 1000w, large.jpg 1500w" sizes="50vw" alt="Wallaby" />
+```
+
+### All together
+
+We use all the techniques we discussed. Combining media queries and srcset to specify images for different viewports and also providing different images for different pixel densities. 
+
+```
+<picture>
+  <source media="(min-width: 1000px)" srcset="bird_large_1x.jpg 1x, bird_large_2x.jpg 2x">
+  <source media="(min-width: 500px)" srcset="bird_med_1x.jpg 1x, bird_med_2x.jpg 2x">
+  <img src="bird_small.jpg" alt="A colorful bird">
+</picture>
+```
+
+>> Tools like **responsivebreakpoints.com** will generate the images and the corresponding code for you so you don’t have to do 
+
+
+
+
+
+
 
 
 
@@ -1584,3 +1685,5 @@ Every step to get to content loses 20% of users.
 - Workbox: Flexible PWA Libraries: https://www.youtube.com/watch?time_continue=11&v=DtuJ55tmjps
 - Responsive Web Design Patterns: https://developers.google.com/web/fundamentals/design-and-ux/responsive/patterns
 - 7 Habits of Highly Effective Media Queries: http://bradfrost.com/blog/post/7-habits-of-highly-effective-media-queries/#content
+- Responsive Breakpoints Tool: http://responsivebreakpoints.com
+- Using WebP Images: https://css-tricks.com/using-webp-images/
