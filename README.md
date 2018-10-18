@@ -1725,6 +1725,12 @@ Even if the user is not actively using your app, upon receiving a push notificat
 Each browser manages push notifications through their own system, called a "push service." When the user grants permission for Push on your site, the app subscribes to the browser's internal push service. This creates a special subscription object that contains the "endpoint URL" of the push service, which is different for each browser, and a public key. Your application server sends push messages to this URL, encrypted with the public key, and the push service sends it to the right client.
 
 
+## Offline Quickstart
+
+https://docs.google.com/presentation/d/1ECzY93trT-cJdj8xIxqUYpCcBi5NQOm8q-WQJW1k8zI
+
+
+
 
 
 
