@@ -2194,6 +2194,47 @@ Notifications should be timely, precise, and relevant.
 
 ## The Payment Request API
 
+Replace the checkout form in a website for a more usable experience.
+
+W3C Candidate Recommendation under development by the W3C Web Payments Working Group: https://www.w3.org/TR/payment-request/ (https://caniuse.com/#feat=payment-request).
+
+Mobile users are likely to abandon online purchase forms that are user-intensive, difficult to use, slow to load and refresh, and require multiple steps to complete. 
+
+66% of purchases on mobile are on web.
+
+66% fewer conversions on mobile websites.
+
+Checkout forms today:
+ - Manual
+ - Tedious
+ - Slow
+ - N-taps
+
+25% increase in conversion rate from Autofill.
+
+### Payment Request API
+
+A W3C API to elimmite checkout forms for users and standardize payment collection for sites.
+
+Checkout with PaymentRequest:
+ - Automatic
+ - Simple
+ - Fast
+ - 1-tap
+
+### How PaymentRequest() works
+
+Code examples at googlechrome.github.io.
+
+The process begins when the merchant site creates a new PaymentRequest and passes to the browser all the information required to make the purchase: the amount to be charged, what currency they expect payment in, and what payment methods are accepted by the site.
+
+The browser then presents the payments UI to the user, who selects a payment method and authorizes the transaction.
+
+A payment method can be as straightforward as a credit card that is already stored by the browser, or as esoteric as a third-party system (for example, Android Pay or PayPal) written specifically to deliver payments to the site (this functionality is coming soon). After the user authorizes the transaction, all the necessary payment details are sent directly back to the site. For example, for a credit card payment, the site gets a card number, a cardholder name, an expiration date, and a CVC.
+
+See Web Payments Overview: https://developers.google.com/web/fundamentals/payments/
+
+Stripe's support for Payment Request API: https://stripe.com/docs/stripe-js/elements/payment-request-button
 
 
 ## Integrating Analytics
@@ -2215,3 +2256,4 @@ Notifications should be timely, precise, and relevant.
 - Using WebP Images: https://css-tricks.com/using-webp-images/
 - Offlite-first for your Templated Site: https://jeffy.info/2016/11/02/offline-first-for-your-templated-site-part-1.html
 - Notification generator: https://tests.peter.sh/notification-generator/#
+- Web Payments Overview: https://developers.google.com/web/fundamentals/payments/
