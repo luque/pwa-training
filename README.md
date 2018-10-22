@@ -1730,7 +1730,102 @@ Each browser manages push notifications through their own system, called a "push
 https://docs.google.com/presentation/d/1ECzY93trT-cJdj8xIxqUYpCcBi5NQOm8q-WQJW1k8zI
 
 
+## Working with Gulp
 
+Modern web development has many repetitive tasks like running a local server, minifying code, optimizing images, preprocessing CSS and more.
+
+Gulp is a cross-platform, streaming task runner that lets developers automate many development tasks.
+
+At a high level, gulp reads files as streams and pipes the streams to different tasks. These tasks are code-based and use plugins. The tasks modify the files, building source files into production files.
+
+#### Setup
+
+```
+npm init
+npm install gulp --save-dev
+npm install pluginA --save-dev
+npm install pluginB --save-dev
+```
+
+All gulp code is written in a gulpfile.js file. To use a package, start by including it in gulpfile.js.
+
+```
+// Include plugins
+var gulp = require('gulp'); // Required
+var pluginA = require('pluginA');
+var pluginB = require('pluginB');
+var pluginC = require('pluginC');
+
+// Define tasks
+gulp.task('task-A', function() {
+  gulp.src('some-source-files')
+  .pipe(pluginA())
+  .pipe(gulp.dest('some-destination'));
+});
+
+gulp.task('task-BC', function() {
+  gulp.src('other-source-files')
+  .pipe(pluginB())
+  .pipe(pluginC())
+  .pipe(gulp.dest('some-other-destination'));
+});
+```
+
+#### Examples
+
+Uglify JavaScript:
+
+```
+var gulp = require('gulp');
+var uglify = require('gulp-uglify');
+
+gulp.task('uglify', function() {
+  gulp.src('js/**/*.js')
+  .pipe(uglify())
+  .pipe(gulp.dest('build'));
+});
+```
+
+Prefix CSS and build sourcemaps:
+
+```
+var gulp = require('gulp');
+var autoprefixer = require('gulp-autoprefixer');
+var sourcemaps = require('gulp-sourcemaps');
+
+gulp.task('processCSS', function() {
+  gulp.src('styles/**/*.css')
+  .pipe(sourcemaps.init())
+  .pipe(autoprefixer())
+  .pipe(sourcemaps.write())
+  .pipe(gulp.dest('build'));
+});
+```
+
+Default task:
+
+```
+gulp.task('default', ['task1', 'task2']);
+```
+
+Watch:
+
+```
+gulp.task('watch', function() {
+  gulp.watch('styles/**/*.css', ['processCSS']);
+});
+```
+
+
+## Push Notifications
+
+
+
+## The Payment Request API
+
+
+
+## Integrating Analytics
 
 
 
