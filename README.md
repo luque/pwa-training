@@ -1816,9 +1816,380 @@ gulp.task('watch', function() {
 });
 ```
 
-
 ## Push Notifications
 
+Push Notifications are assembled using two APIs: the Notifications API and the Push API.
+
+The Notifications API lets the app display system notifications to the user.
+
+The Push API allows a service worker to handle Push Messages from a server, even while the app is not active.
+
+Browsers that support web push each implement their own push service, which is a system for processing messages and routing them to the correct clients.
+
+When it receives a message, the service worker wakes up just long enough to display the notification and then goes back to sleep. Because notifications are paired with a service worker, the service worker can listen for notification interactions in the background without using resources. When the user interacts with the notification, by clicking or closing it, the service worker wakes up for a brief time to handle the interaction before going back to sleep.
+
+### Notifications API
+
+The Notifications API lets us display notifications to the user. It is incredibly powerful and simple to use. Where possible, it uses the same mechanisms a native app would use, giving a completely native look and feel.
+
+#### Request permission
+
+Before we can create a notification we need to get permission from the user. Below is the code to prompt the user to allow notifications. This goes in the app's main JavaScript file.
+
+```
+Notification.requestPermission(function(status) {
+    console.log('Notification permission status:', status);
+});
+```
+
+We call the requestPermission method on the global Notification object. This displays a pop-up message from the browser requesting permission to allow notifications. The user's response is stored along with your app, so calling this again returns the user's last choice. Once the user grants permission, the app can display notifications.
+
+#### Display a notification
+
+We can show a notification from the app's main script with the showNotification method (the "Invocation API"):
+
+```
+function displayNotification() {
+  if (Notification.permission == 'granted') {
+    navigator.serviceWorker.getRegistration().then(function(reg) {
+      reg.showNotification('Hello world!');
+    });
+  }
+}
+```
+
+Notice the showNotification method is called on the service worker registration object. This creates the notification on the active service worker, so that events triggered by interactions with the notification are heard by the service worker.
+
+Note: You can also create a notification using a notification constructor. However, a notification created this way is not paired with a service worker and is therefore not interactive.
+
+#### Add notification options
+
+```
+function displayNotification() {
+  if (Notification.permission == 'granted') {
+    navigator.serviceWorker.getRegistration().then(function(reg) {
+      var options = {
+        body: 'Here is a notification body!',
+        icon: 'images/example.png',
+        vibrate: [100, 50, 100],
+        data: {
+          dateOfArrival: Date.now(),
+          primaryKey: 1
+        }
+      };
+      reg.showNotification('Hello world!', options);
+    });
+  }
+}
+```
+
+#### Add actions to the notification
+
+Simple notifications display information to the user and handle basic interactions when clicked. This is a massive step forward for the web, but it's still a bit basic. We can add contextually relevant actions to the notification so the user can quickly interact with our site or service without opening a page:
+
+```
+function displayNotification() {
+  if (Notification.permission == 'granted') {
+    navigator.serviceWorker.getRegistration().then(function(reg) {
+      var options = {
+        body: 'Here is a notification body!',
+        icon: 'images/example.png',
+        vibrate: [100, 50, 100],
+        data: {
+          dateOfArrival: Date.now(),
+          primaryKey: 1
+        },
+        actions: [
+          {action: 'explore', title: 'Explore this new world',
+            icon: 'images/checkmark.png'},
+          {action: 'close', title: 'Close notification',
+            icon: 'images/xmark.png'},
+        ]
+      };
+      reg.showNotification('Hello world!', options);
+    });
+  }
+}
+```
+
+#### Lister for events
+
+If the user dismisses the notification through a direct action on the notification (such as a swipe in Android), it raises a notificationclose event inside the service worker.
+
+E.g. serviceworker.js:
+
+```
+self.addEventListener('notificationclose', function(e) {
+  var notification = e.notification;
+  var primaryKey = notification.data.primaryKey;
+
+  console.log('Closed notification: ' + primaryKey);
+});
+```
+
+The most important thing is to handle when the user clicks on the notification. The click triggers a notificationclick event inside your service worker.
+
+E.g. serviceworker.js:
+
+```
+self.addEventListener('notificationclick', function(e) {
+  var notification = e.notification;
+  var primaryKey = notification.data.primaryKey;
+  var action = e.action;
+
+  if (action === 'close') {
+    notification.close();
+  } else {
+    clients.openWindow('http://www.example.com');
+    notification.close();
+  }
+});
+```
+
+### Designing with the future in mind
+
+#### Check for support
+
+The web is not yet at the point where we can build apps that depend on web notifications. When possible, design for a lack of notification support and layer on notifications.
+
+In main.js:
+
+```
+if ('Notification' in window && navigator.serviceWorker) {
+  // Display the UI to let the user toggle notifications
+}
+```
+
+#### Check for permission
+
+Always check for permission to use the Notifications API. It is important to keep checking that permission has been granted because the status may change:
+
+In main.js:
+
+```
+if (Notification.permission === "granted") {
+  /* do our magic */
+} else if (Notification.permission === "blocked") {
+ /* the user has previously denied push. Can't reprompt. */
+} else {
+  /* show a prompt to the user */
+}
+```
+
+### Push API
+
+#### How Web Push works
+
+When the user grants permission for Push on your site, you can then subscribe the app to the browser's push service. This creates a special subscription object that contains the "endpoint URL" of the push service, which is different for each browser, and a public key (see the example below). You send your push messages to this URL, encrypted with the public key, and the push service sends it to the right client.
+
+A typical subscription object looks like this:
+
+```
+{"endpoint":"https://fcm.googleapis.com/fcm/send/dpH5lCsTSSM:APA91bHqjZxM0VImWWqDRN7U0a3AycjUf4O-byuxb_wJsKRaKvV_iKw56s16ekq6FUqoCF7k2nICUpd8fHPxVTgqLunFeVeB9lLCQZyohyAztTH8ZQL9WCxKpA6dvTG_TUIhQUFq_n",
+"keys": {
+    "p256dh":"BLQELIDm-6b9Bl07YrEuXJ4BL_YBVQ0dvt9NQGGJxIQidJWHPNa9YrouvcQ9d7_MqzvGS9Alz60SZNCG3qfpk=",
+    "auth":"4vQK-SvRAN5eo-8ASlrwA=="
+    }
+}
+```
+
+How does the push service know which client to send the message to? The endpoint URL contains a unique identifier. This identifier is used to route the message that you send to the correct device, and when processed by the browser, identifies which service worker should handle the request.
+
+Because push notifications are paired with a service worker, apps that use push notifications must be on HTTPS. This ensures that the communication channel between your server and the push service is secure, and from the push service to the user is also secure.
+
+However, HTTPS doesn't ensure that the push service itself is secure. We must be sure that the data sent from your server to the client is not tampered with or directly inspected by any third party. You must encrypt the message payload on your server.
+
+#### Handling the push event in the service worker
+
+The service worker both receives the push message and creates the notification.
+
+In serviceworker.js:
+
+```
+self.addEventListener('push', function(e) {
+  var options = {
+    body: 'This notification was generated from a push!',
+    icon: 'images/example.png',
+    vibrate: [100, 50, 100],
+    data: {
+      dateOfArrival: Date.now(),
+      primaryKey: '2'
+    },
+    actions: [
+      {action: 'explore', title: 'Explore this new world',
+        icon: 'images/checkmark.png'},
+      {action: 'close', title: 'Close',
+        icon: 'images/xmark.png'},
+    ]
+  };
+  e.waitUntil(
+    self.registration.showNotification('Hello world!', options)
+  );
+});
+```
+
+Another important difference is that the showNotification method is wrapped in an e.waitUntil method. This extends the lifetime of the push event until the showNotification promise resolves. In general, we use the waitUntil method to ensure the service worker doesn't terminate before an asynchronous operation has completed.
+
+#### Subscribing to Push notifications
+
+Before we can send a push message we must first subscribe to a push service. Subscribing returns a subscription object, or subscription.
+
+It is your job to take this subscription object and store it somewhere on your system. For instance, you might store it in a database attached to a user object. In our examples, we will log results to the console.
+
+First, we need to check if we already have a subscription object and update the UI accordingly.
+
+In main.js:
+
+```
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(function(reg) {
+    console.log('Service Worker Registered!', reg);
+
+    reg.pushManager.getSubscription().then(function(sub) {
+      if (sub === null) {
+        // Update UI to ask user to register for Push
+        console.log('Not subscribed to push service!');
+      } else {
+        // We have a subscription, update the database
+        console.log('Subscription object: ', sub);
+      }
+    });
+  })
+   .catch(function(err) {
+    console.log('Service Worker registration failed: ', err);
+  });
+}
+```
+
+Assume the user enabled notifications. Now we can subscribe to the push service:
+
+In main.js:
+
+```
+function subscribeUser() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready.then(function(reg) {
+
+      reg.pushManager.subscribe({
+        userVisibleOnly: true
+      }).then(function(sub) {
+        console.log('Endpoint URL: ', sub.endpoint);
+      }).catch(function(e) {
+        if (Notification.permission === 'denied') {
+          console.warn('Permission for notifications was denied');
+        } else {
+          console.error('Unable to subscribe to push', e);
+        }
+      });
+    })
+  }
+}
+```
+
+It's best practice to call the subscribeUser() function in response to a user action signalling they would like to subscribe to push messages from our app.
+
+#### The Web Push protocol
+
+Chrome currently uses Firebase Cloud Messaging (FCM) as its push service. FCM recently adopted the Web Push protocol. FCM is the successor to Google Cloud Messaging (GCM) and supports the same functionality and more.
+
+Sending a message using cURL:
+
+```
+curl "ENDPOINT_URL" --request POST --header "TTL: 60" --header "Content-Length: 0" \
+--header "Authorization: key=SERVER_KEY"
+```
+
+
+#### Working with data payloads
+
+In serviceworker.js:
+
+```
+self.addEventListener('push', function(e) {
+  var body;
+
+  if (e.data) {
+    body = e.data.text();
+  } else {
+    body = 'Push message no payload';
+  }
+
+  var options = {
+    body: body,
+    icon: 'images/notification-flat.png',
+    vibrate: [100, 50, 100],
+    data: {
+      dateOfArrival: Date.now(),
+      primaryKey: 1
+    },
+    actions: [
+      {action: 'explore', title: 'Explore this new world',
+        icon: 'images/checkmark.png'},
+      {action: 'close', title: 'I don't want any of this',
+        icon: 'images/xmark.png'},
+    ]
+  };
+  e.waitUntil(
+    self.registration.showNotification('Push Notification', options)
+  );
+});
+```
+
+#### Sending the message from the Server
+
+Web Push libraries: https://github.com/web-push-libs
+
+If you do need to implement encryption manually, use Peter Beverloo's encryption verifier: https://tests.peter.sh/push-encryption-verifier/
+
+Example with web-push library in Node.js:
+
+```
+var webPush = require('web-push');
+
+var pushSubscription = {"endpoint":"https://android.googleapis.com/gcm/send/f1LsxkKphfQ:APA91bFUx7ja4BK4JVrNgVjpg1cs9lGSGI6IMNL4mQ3Xe6mDGxvt_C_gItKYJI9CAx5i_Ss6cmDxdWZoLyhS2RJhkcv7LeE6hkiOsK6oBzbyifvKCdUYU7ADIRBiYNxIVpLIYeZ8kq_A",
+"keys":{"p256dh":"BLc4xRzKlKORKWlbdgFaBrrPK3ydWAHo4M0gs0i1oEKgPpWC5cW8OCzVrOQRv-1npXRWk8udnW3oYhIO4475rds=", "auth":"5I2Bu2oKdyy9CwL8QVF0NQ=="}};
+
+var payload = 'Here is a payload!';
+
+var options = {
+  gcmAPIKey: 'AIzaSyD1JcZ8WM1vTtH6Y0tXq_Pnuw4jgj_92yg',
+  TTL: 60
+};
+
+webPush.sendNotification(
+  pushSubscription,
+  payload,
+  options
+);
+```
+
+Time-to-live is the value in seconds that describes how long a push message is retained by the push service (by default, four weeks).
+
+#### Identifying your service with VAPID Auth
+
+The Web Push Protocol has been designed to respect the user's privacy by keeping users anonymous and not requiring strong authentication between your app and the push service.
+
+This presents some challenges:
+
+  -  An unauthenticated push service is exposed to a greater risk of denial of service attack
+  -  Any application server in possession of the endpoint is able to send messages to your users
+  -  There's no way for the push service to contact the developer if there are problems
+
+The solution is to have the publisher optionally identify themselves using the Voluntary Application Server Identification for Web Push (VAPID) protocol.
+
+Using VAPID also lets you avoid the FCM-specific steps for sending a push message. You no longer need a Firebase project, a gcm_sender_id, or an Authorization header.
+
+##### Using VAPID
+
+The process is pretty simple:
+
+  1.  Your application server creates a public/private key pair. The public key is given to your web app.
+  1.  When the user elects to receive pushes, add the public key to the subscribe() call's options object.
+  1.  When your app server sends a push message, include a signed JSON web token along with the public key.
+
+### Best Practices
+
+Notifications should be timely, precise, and relevant.
 
 
 ## The Payment Request API
@@ -1843,3 +2214,4 @@ gulp.task('watch', function() {
 - Responsive Breakpoints Tool: http://responsivebreakpoints.com
 - Using WebP Images: https://css-tricks.com/using-webp-images/
 - Offlite-first for your Templated Site: https://jeffy.info/2016/11/02/offline-first-for-your-templated-site-part-1.html
+- Notification generator: https://tests.peter.sh/notification-generator/#
