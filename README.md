@@ -2258,5 +2258,6 @@ Stripe's support for Payment Request API: https://stripe.com/docs/stripe-js/elem
 - Using WebP Images: https://css-tricks.com/using-webp-images/
 - Offlite-first for your Templated Site: https://jeffy.info/2016/11/02/offline-first-for-your-templated-site-part-1.html
 - Notification generator: https://tests.peter.sh/notification-generator/#
+- Sending VAPID identified WebPush Notifications via Mozilla's Push Service: https://blog.mozilla.org/services/2016/08/23/sending-vapid-identified-webpush-notifications-via-mozillas-push-service/
 - Web Payments Overview: https://developers.google.com/web/fundamentals/payments/
 - Chapter 5. "Building and Advanced Service Worker" by Lyza D. Gardner in Smashing Book 6.
