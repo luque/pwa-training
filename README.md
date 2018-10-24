@@ -2241,6 +2241,8 @@ Stripe's support for Payment Request API: https://stripe.com/docs/stripe-js/elem
 
 
 
+
+
 ## References
 
 - Progressive Web Apps Training by Google: https://developers.google.com/web/ilt/pwa/
@@ -2257,3 +2259,4 @@ Stripe's support for Payment Request API: https://stripe.com/docs/stripe-js/elem
 - Offlite-first for your Templated Site: https://jeffy.info/2016/11/02/offline-first-for-your-templated-site-part-1.html
 - Notification generator: https://tests.peter.sh/notification-generator/#
 - Web Payments Overview: https://developers.google.com/web/fundamentals/payments/
+- Chapter 5. "Building and Advanced Service Worker" by Lyza D. Gardner in Smashing Book 6.
